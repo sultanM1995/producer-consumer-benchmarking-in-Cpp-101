@@ -6,6 +6,8 @@
 #include <atomic>
 #include <condition_variable>
 
+#include "includes/MarketTick.hpp"
+
 using std::cout;
 using std::endl;
 using std::thread;
@@ -19,23 +21,27 @@ using std::atomic;
 mutex mtx;
 condition_variable cond;
 
-deque<int> deq;
-constexpr uint32_t MAX_BUFFER_SIZE = 16;
+deque<MarketTick> deq;
+constexpr uint32_t MAX_BUFFER_SIZE = 1024;
+constexpr uint64_t MAX_PRODUCER_COUNT = 1000000000; // 1 billion
+
 atomic producer_done{false};
-int producer_count = 0;
-int consumer_count = 0;
+atomic<uint64_t> producer_count(0);
+atomic<uint64_t> consumer_count(0);
 
 
-void produce(int val) {
-    while (val) {
+void produce(const uint64_t total_ticks) {
+    uint64_t id = 0;
+    while (id < total_ticks) {
+        MarketTick tick = generateMarketTick(id);
         unique_lock lock(mtx);
         cond.wait(lock, []() -> bool {
             return deq.size() < MAX_BUFFER_SIZE;
         });
 
-        deq.push_front(val);
-        val--;
-        producer_count++;
+        deq.push_front(tick);
+        ++producer_count;
+        ++id;
         cond.notify_one();
     }
     producer_done = true;
@@ -54,7 +60,7 @@ void consume() {
             break;
         }
         deq.pop_back();
-        consumer_count++;
+        ++consumer_count;
         cond.notify_one();
     }
 }
@@ -64,7 +70,7 @@ void consume() {
 int main()
 {
     const auto start = std::chrono::high_resolution_clock::now();
-    thread producer(produce, 100000000); // Start producing 100 million items
+    thread producer(produce, MAX_PRODUCER_COUNT);
     thread consumer(consume);
 
     producer.join();
@@ -72,9 +78,9 @@ int main()
 
     const auto end = std::chrono::high_resolution_clock::now();
 
-    const auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     cout << "Buffer size: " << MAX_BUFFER_SIZE << endl;
     cout << "Producer count: " << producer_count << endl;
     cout << "Consumer count: " << consumer_count << endl;
-    cout << "Total time taken: " << duration.count() << " seconds" << endl;
+    cout << "Total time taken: " << duration.count() << " milliseconds" << endl;
 }
