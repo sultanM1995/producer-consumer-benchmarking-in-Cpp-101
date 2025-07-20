@@ -22,7 +22,7 @@ mutex mtx;
 condition_variable cond;
 
 deque<MarketTick> deq;
-constexpr uint32_t MAX_BUFFER_SIZE = 1024;
+constexpr uint32_t MAX_BUFFER_SIZE = 8192;
 constexpr uint64_t MAX_PRODUCER_COUNT = 1000000000; // 1 billion
 
 atomic producer_done{false};
