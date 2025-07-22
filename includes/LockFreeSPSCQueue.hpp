@@ -16,32 +16,28 @@ public:
     {}
 
     bool enqueue(const T& item) {
-        const size_t current_tail = tail_.load();
+        const size_t current_tail = tail_.load(std::memory_order::relaxed);
         const size_t next_tail = (current_tail + 1) % capacity_;
-        if (next_tail == head_.load()) {
+        if (next_tail == head_.load(std::memory_order::acquire)) {
             return false;
         }
         buffer_[current_tail] = item;
-        tail_.store(next_tail);
+        tail_.store(next_tail, std::memory_order::release);
         return true;
     }
 
     bool dequeue(T& item) {
-        const size_t current_head = head_.load();
-        if (current_head == tail_.load()) {
+        const size_t current_head = head_.load(std::memory_order::relaxed);
+        if (current_head == tail_.load(std::memory_order::acquire)) {
             return false;
         }
         item = buffer_[current_head];
-        head_.store((current_head + 1) % capacity_);
+        head_.store((current_head + 1) % capacity_, std::memory_order::release);
         return true;
     }
 
     bool empty() const {
-        return head_ == tail_;
-    }
-
-    bool full() const {
-        return (tail_ + 1) % capacity_ == head_;
+        return head_.load(std::memory_order::relaxed) == tail_.load(std::memory_order::relaxed);
     }
 
 

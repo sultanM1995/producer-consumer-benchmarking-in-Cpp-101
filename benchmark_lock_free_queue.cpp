@@ -33,7 +33,7 @@ void produce() {
             ++id;
         }
     }
-    producer_done = true;
+    producer_done.store(true, std::memory_order_release);
 }
 
 void consume() {
@@ -42,7 +42,7 @@ void consume() {
         if (queue.dequeue(tick)) {
             // In real world, I would process the tick here
             ++consumer_count;
-        } else if (producer_done.load() && queue.empty()) {
+        } else if (producer_done.load(std::memory_order::acquire) && queue.empty()) {
             // If producer is done and queue is empty, exit
             break;
         }

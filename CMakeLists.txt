@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(learning_c__)
+project(producer_consumer_benchmark)
 
 set(CMAKE_CXX_STANDARD 20)
 
